@@ -3,8 +3,6 @@ name: 构建小龙人APK
 on:
   push:
     branches: [ main ]
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -22,43 +20,45 @@ jobs:
       - name: 设置Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 接受licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+      - name: 检查环境
+        run: |
+          echo "JAVA_HOME: $JAVA_HOME"
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          echo "SDK root:"
+          ls $ANDROID_HOME/ || echo "no ANDROID_HOME"
+          ls $ANDROID_SDK_ROOT/ || echo "no SDK_ROOT"
+          echo "platforms:"
+          ls $ANDROID_HOME/platforms/ 2>/dev/null || echo "no platforms dir"
+          echo "---"
+          # 直接安装platform
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" 2>&1 | tail -5 || echo "sdkmanager failed"
 
       - name: 创建local.properties
-        run: |
-          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-          echo "Created local.properties: sdk.dir=$ANDROID_HOME"
+        run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-      - name: 下载Gradle Wrapper
-        run: |
-          cd android
-          mkdir -p gradle/wrapper
-          # Gradle wrapper jar from official source
-          curl -sLo gradle/wrapper/gradle-wrapper.jar "https://github.com/gradle/gradle/raw/v8.5.0/gradle/wrapper/gradle-wrapper.jar"
-          chmod 644 gradle/wrapper/gradle-wrapper.jar
-          chmod +x gradlew
-          echo "Gradle wrapper ready"
-
-      - name: Grant execute permission
-        run: chmod +x android/gradlew
-
-      - name: Build APK
+      - name: 构建APK
         run: |
           cd android
           export ANDROID_HOME=$ANDROID_HOME
           export ANDROID_SDK_ROOT=$ANDROID_HOME
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
+          # 直接运行gradle，捕获所有输出
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle_output.txt
+          echo "EXIT_CODE=$?" >> $GITHUB_OUTPUT
 
-      - name: Upload APK
+      - name: 显示Gradle输出
+        if: always()
+        run: |
+          if [ -f /tmp/gradle_output.txt ]; then
+            echo "=== Gradle最后100行 ==="
+            tail -100 /tmp/gradle_output.txt
+            echo "=== 错误摘要 ==="
+            grep -i "error\|FAILED\|Exception\|\$\$\$" /tmp/gradle_output.txt | tail -20 || echo "no errors found"
+          fi
+
+      - name: 上传APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: xiaolongren-apk
           path: "**/*.apk"
-          if-no-files-found: 'error'
-
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: "**/*.apk"
+          if-no-files-found: 'ignore'
