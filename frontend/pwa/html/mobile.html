@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="apple-mobile-web-app-title" content="小龙人">
+<title>小龙人·数字生命体</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#0a0a14;color:#e0d8c8;touch-action:manipulation}
+:root{--gold:#d4a000;--gold-dim:rgba(212,160,0,0.3);--bg:#0d0d0d;--text:#d0c8b8}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+#top{height:52px;padding:0 14px;padding-top:env(safe-area-inset-top,0);display:flex;align-items:center;justify-content:space-between;z-index:10;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.04)}
+#top .l{display:flex;align-items:center;gap:8px}
+#top .r{display:flex;align-items:center;gap:4px}
+#top .avatar{width:32px;height:32px;border-radius:50%;overflow:hidden;border:1.5px solid var(--gold);cursor:pointer;flex-shrink:0}
+#top .avatar img{width:100%;height:100%;object-fit:cover}
+#top .name{font-size:13px;font-weight:bold;color:var(--gold);cursor:pointer}
+#top .top-btn{width:30px;height:30px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:var(--gold);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#top .top-btn:active{background:rgba(255,255,255,0.1)}
+#msgs{flex:1;overflow-y:auto;padding:8px 14px;scrollbar-width:none;display:flex;flex-direction:column;gap:8px}
+#msgs::-webkit-scrollbar{display:none}
+#msgs .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#333;gap:8px}
+#msgs .empty .et{font-size:14px;color:#444}
+#msgs .empty .es{font-size:12px;color:#2a2a2a}
+.msg{display:flex;flex-direction:column;max-width:85%;animation:mi .25s ease}
+@keyframes mi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{align-self:flex-end}
+.msg.ai{align-self:flex-start}
+.msg .mb{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.55;word-break:break-word}
+.msg.user .mb{background:var(--gold);color:#000;border-bottom-right-radius:4px}
+.msg.ai .mb{background:rgba(30,30,48,0.85);color:#d0c8b8;border-bottom-left-radius:4px}
+.msg .mtime{font-size:9px;color:#3a3a4a;margin-top:2px;padding:0 4px}
+.msg.user .mtime{text-align:right}
+.msg .mbtns{margin-top:4px;display:flex;gap:6px;padding-left:4px}
+.mbtn{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--gold);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.mbtn:active{transform:scale(1.2);background:var(--gold);color:#000}
+.mbtn.playing{animation:tpulse 0.8s ease-in-out infinite}
+#input-bar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));background:rgba(0,0,0,0.4);border-top:1px solid rgba(255,255,255,0.04)}
+#text-input{flex:1;padding:10px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#e0d8c8;font-size:15px;outline:none;resize:none;max-height:80px;font-family:inherit}
+#text-input:focus{border-color:var(--gold-dim)}
+#text-input::placeholder{color:#444}
+#send-btn{width:40px;height:40px;border-radius:50%;border:none;background:var(--gold);color:#000;font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+#send-btn:active{transform:scale(1.15)}
+#send-btn:disabled{opacity:0.3;pointer-events:none}
+#mic-btn{width:40px;height:40px;border-radius:50%;border:2px solid var(--gold-dim);background:rgba(200,168,78,0.08);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+#mic-btn:active,#mic-btn.active{background:var(--gold);border-color:var(--gold);transform:scale(1.1)}
+#mic-btn .icon{width:18px;height:18px;pointer-events:none}
+#mic-btn .icon svg{width:100%;height:100%}
+#mic-btn.active{animation:tpulse 1s ease-in-out infinite}
+@keyframes tpulse{0%,100%{box-shadow:0 0 15px var(--gold-dim)}50%{box-shadow:0 0 40px var(--gold),0 0 70px var(--gold-dim)}}
+.typing-dots{display:inline-flex;gap:4px;padding:2px 0}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:td 1.2s ease-in-out infinite}
+.typing-dots span:nth-child(2){animation-delay:0.2s}
+.typing-dots span:nth-child(3){animation-delay:0.4s}
+@keyframes td{0%,60%,100%{transform:translateY(0);opacity:0.3}30%{transform:translateY(-6px);opacity:1}}
+@media(min-width:500px){#app{max-width:430px;margin:0 auto;border:1px solid rgba(255,255,255,0.04)}}
+/* 弹窗通用 */
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;padding:16px}
+.overlay.show{display:flex}
+.box{width:100%;max-width:380px;background:#161618;border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.08);max-height:90vh;overflow-y:auto}
+.box h2{font-size:16px;color:var(--gold);margin-bottom:16px;text-align:center}
+.cg{margin-bottom:14px}
+.cg label{display:block;font-size:12px;color:#888;margin-bottom:4px}
+.cg select,.cg input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.3);color:#e0d8c8;font-size:14px;outline:none}
+.cg select:focus,.cg input:focus{border-color:var(--gold-dim)}
+.cg input::placeholder{color:#444}
+.provider-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.provider-card{padding:10px;border-radius:8px;border:2px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);cursor:pointer;text-align:center;font-size:13px;transition:all 0.15s}
+.provider-card.selected{border-color:var(--gold);background:rgba(212,160,0,0.08)}
+.provider-card:active{transform:scale(0.96)}
+.cfg-actions{display:flex;gap:8px;margin-top:16px}
+.cfg-actions button{flex:1;padding:12px;border-radius:8px;border:none;font-size:14px;font-weight:600;cursor:pointer}
+.cfg-save{background:var(--gold);color:#000}
+.cfg-cancel{background:rgba(255,255,255,0.06);color:#888}
+.cfg-status{text-align:center;font-size:12px;margin-top:10px;min-height:18px}
+.cfg-status.ok{color:#22c55e}
+.cfg-status.err{color:#ef4444}
+.cfg-summary{margin:12px 0;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:12px;color:#aaa;line-height:1.6}
+.eye-btn{background:none;border:none;cursor:pointer;font-size:16px;padding:0 6px;color:#888;line-height:1;position:absolute;right:2px;top:50%;transform:translateY(-50%);z-index:2;display:flex;align-items:center;justify-content:center;height:100%}
+.key-row{display:flex;align-items:center;gap:0;position:relative}
+.key-row input{flex:1;min-width:0;padding-right:30px!important}
+/* 角色弹框 */
+.char-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.char-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:8px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);transition:all 0.15s}
+.char-item:active{transform:scale(0.95)}
+.char-item.sel{background:rgba(200,168,78,0.15);border-color:rgba(200,168,78,0.3)}
+.char-item img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.1)}
+.char-item.sel img{border-color:var(--gold)}
+.char-item span{font-size:11px;color:#aaa;white-space:nowrap}
+.char-item.sel span{color:var(--gold)}
+#install-banner{display:none;position:fixed;bottom:100px;left:12px;right:12px;z-index:150;background:rgba(0,0,0,0.92);border:1px solid var(--gold-dim);border-radius:14px;padding:14px 16px;align-items:center;gap:12px}
+#install-banner.show{display:flex}
+#install-banner .ib-close{position:absolute;top:6px;right:10px;color:#666;font-size:14px;cursor:pointer}
+#install-banner .ib-txt{flex:1;font-size:13px;color:#ccc;line-height:1.4}
+#install-banner button{padding:8px 16px;border-radius:8px;border:none;background:var(--gold);color:#000;font-size:14px;font-weight:bold;cursor:pointer;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="top">
+    <div class="l">
+      <div class="avatar" id="top-avatar" onclick="showPicker()"><img id="avatar-img" src="img_longyuan.jpg"></div>
+      <span class="name" id="char-name" onclick="showPicker()">龙渊</span>
+    </div>
+    <div class="r">
+      <button class="top-btn" id="cfg-btn" title="配置模型">⚙</button>
+    </div>
+  </div>
+
+  <div id="msgs">
+    <div class="empty" id="empty-hint">
+      <div class="et" id="empty-title">龙渊在等你</div>
+      <div class="es" id="empty-sub">点⚙配置模型，开始对话</div>
+    </div>
+  </div>
+
+  <div id="input-bar">
+    <textarea id="text-input" placeholder="说点什么..." rows="1"></textarea>
+    <button id="mic-btn">
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></span>
+    </button>
+    <button id="send-btn" type="button">➤</button>
+  </div>
+</div>
+
+<!-- 配置弹窗 -->
+<div class="overlay" id="cfg-overlay">
+  <div class="box">
+    <h2>⚙ 配置大模型</h2>
+    <div class="cg"><label>选择模型提供商</label><div class="provider-grid" id="cfg-provider-grid"></div></div>
+    <div class="cg"><label>🔑 API Key</label><div class="key-row"><input type="password" id="cfg-api-key" placeholder="sk-..." autocomplete="off"><button class="eye-btn" id="cfg-eye">👁</button></div></div>
+    <div class="cg" id="cfg-model-group"><label>🤖 模型</label><select id="cfg-model-select"></select></div>
+    <div class="cfg-summary" id="cfg-summary"></div>
+    <div class="cfg-status" id="cfg-status"></div>
+    <div class="cfg-actions">
+      <button class="cfg-cancel" id="cfg-cancel">取消</button>
+      <button class="cfg-save" id="cfg-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 角色弹窗 -->
+<div class="overlay" id="char-overlay">
+  <div class="box">
+    <h2>选择角色</h2>
+    <div class="char-grid" id="char-grid"></div>
+  </div>
+</div>
+
+<!-- 安装横幅 -->
+<div id="install-banner">
+  <span class="ib-close" onclick="this.parentElement.classList.remove('show')">✕</span>
+  <div class="ib-txt">📲 安装到桌面，像App一样使用</div>
+  <button id="install-btn">安装</button>
+</div>
+
+<script>
+// ====== 角色数据 ======
+const CHARS = [
+  {id:'longyuan', name:'龙渊', sub:'沉稳'},
+  {id:'chiyu', name:'赤羽', sub:'热血'},
+  {id:'ling', name:'凌', sub:'冷峻'},
+  {id:'qingmo', name:'轻墨', sub:'知性'},
+  {id:'shuanghua', name:'霜华', sub:'通透'},
+  {id:'yeying', name:'夜影', sub:'神秘'},
+];
+
+let curChar = 'longyuan';
+let isLoading = false;
+let msgHistory = [];
+let recognition = null, isListening = false, utt = null;
+let installPrompt = null;
+
+// ====== 初始化 ======
+document.addEventListener('DOMContentLoaded', function() {
+  // 配置弹窗
+  document.getElementById('cfg-btn').onclick = toggleConfig;
+  document.getElementById('cfg-cancel').onclick = closeConfig;
+  document.getElementById('cfg-save').onclick = saveConfig;
+  document.getElementById('cfg-eye').onclick = toggleKey;
+  document.getElementById('cfg-overlay').onclick = function(e) { if (e.target === this) closeConfig(); };
+  
+  // 输入
+  document.getElementById('send-btn').onclick = sendText;
+  document.getElementById('text-input').onkeydown = function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }
+  };
+  document.getElementById('text-input').oninput = function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+  };
+  
+  // 语音
+  document.getElementById('mic-btn').onmousedown = startTalk;
+  document.getElementById('mic-btn').ontouchstart = startTalk;
+  document.getElementById('mic-btn').onmouseup = stopTalkWrap;
+  document.getElementById('mic-btn').ontouchend = stopTalkWrap;
+  
+  // 角色弹窗
+  document.getElementById('char-overlay').onclick = function(e) { if (e.target === this) hidePicker(); };
+  
+  // PWA安装
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    installPrompt = e;
+    document.getElementById('install-banner').classList.add('show');
+  });
+  document.getElementById('install-btn').onclick = function() {
+    if (!installPrompt) { alert('请使用浏览器菜单中的"添加到主屏幕"'); return; }
+    installPrompt.prompt();
+    installPrompt.userChoice.then(function() {
+      document.getElementById('install-banner').classList.remove('show');
+      installPrompt = null;
+    });
+  };
+  window.addEventListener('appinstalled', function() {
+    document.getElementById('install-banner').classList.remove('show');
+  });
+  
+  // 检查配置
+  if (hasCfg()) {
+    document.getElementById('empty-sub').textContent = '说话或打字，我在这里';
+  }
+  // 恢复历史
+  loadHist();
+});
+
+// ====== 角色切换 ======
+function showPicker() {
+  var grid = document.getElementById('char-grid');
+  grid.innerHTML = CHARS.map(function(c) {
+    var sel = c.id === curChar;
+    return '<div class="char-item' + (sel ? ' sel' : '') + '" onclick="switchChar(\'' + c.id + '\')">' +
+      '<img src="img_' + c.id + '.jpg">' +
+      '<span>' + c.name + '</span></div>';
+  }).join('');
+  document.getElementById('char-overlay').classList.add('show');
+}
+function hidePicker() {
+  document.getElementById('char-overlay').classList.remove('show');
+}
+function switchChar(id) {
+  curChar = id;
+  var c = CHARS.find(function(x) { return x.id === id; });
+  document.getElementById('avatar-img').src = 'img_' + id + '.jpg';
+  document.getElementById('char-name').textContent = c ? c.name : id;
+  document.getElementById('empty-title').textContent = (c ? c.name : id) + '在等你';
+  hidePicker();
+  msgHistory = [];
+}
+
+// ====== 配置 ======
+const PROVIDERS = [
+  {id:'deepseek', name:'DeepSeek', url:'https://api.deepseek.com/v1', models:['deepseek-chat','deepseek-reasoner'], tag:'free'},
+  {id:'openai', name:'OpenAI', url:'https://api.openai.com/v1', models:['gpt-4o','gpt-4o-mini']},
+  {id:'moonshot', name:'Moonshot', url:'https://api.moonshot.cn/v1', models:['moonshot-v1-8k','moonshot-v1-32k']},
+  {id:'qwen', name:'通义千问', url:'https://dashscope.aliyuncs.com/compatible-mode/v1', models:['qwen-plus','qwen-turbo']},
+];
+var cfgProv = 'deepseek';
+var cfgModel = 'deepseek-chat';
+
+function hasCfg() {
+  try { var r = localStorage.getItem('xlr_cfg'); return r ? JSON.parse(r).key : null; } catch(e) { return null; }
+}
+function getCfg() {
+  try { return JSON.parse(localStorage.getItem('xlr_cfg')); } catch(e) { return null; }
+}
+
+function toggleConfig() {
+  var ov = document.getElementById('cfg-overlay');
+  if (ov.classList.contains('show')) { closeConfig(); return; }
+  var saved = getCfg();
+  if (saved) {
+    cfgProv = saved.prov || 'deepseek';
+    cfgModel = saved.model || 'deepseek-chat';
+    document.getElementById('cfg-api-key').value = saved.key || '';
+  } else {
+    cfgProv = 'deepseek';
+    cfgModel = 'deepseek-chat';
+    document.getElementById('cfg-api-key').value = '';
+  }
+  renderCfg();
+  document.getElementById('cfg-status').textContent = '';
+  ov.classList.add('show');
+}
+function closeConfig() {
+  document.getElementById('cfg-overlay').classList.remove('show');
+}
+function toggleKey() {
+  var inp = document.getElementById('cfg-api-key');
+  var btn = document.getElementById('cfg-eye');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '👁‍🗒'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+function selectProv(id) {
+  cfgProv = id;
+  var p = PROVIDERS.find(function(x) { return x.id === id; });
+  if (p) cfgModel = p.models[0];
+  renderCfg();
+}
+function renderCfg() {
+  var grid = document.getElementById('cfg-provider-grid');
+  grid.innerHTML = PROVIDERS.map(function(p) {
+    return '<div class="provider-card' + (cfgProv === p.id ? ' selected' : '') + '" onclick="selectProv(\'' + p.id + '\')">' + p.name + (p.tag ? '<br><small>★免费</small>' : '') + '</div>';
+  }).join('');
+  
+  var p = PROVIDERS.find(function(x) { return x.id === cfgProv; });
+  var sel = document.getElementById('cfg-model-select');
+  if (p && p.models.length) {
+    sel.innerHTML = p.models.map(function(m) {
+      return '<option value="' + m + '"' + (m === cfgModel ? ' selected' : '') + '>' + m + '</option>';
+    }).join('');
+    document.getElementById('cfg-model-group').style.display = 'block';
+  } else {
+    document.getElementById('cfg-model-group').style.display = 'none';
+  }
+  
+  var sum = document.getElementById('cfg-summary');
+  var key = document.getElementById('cfg-api-key').value.trim();
+  sum.innerHTML = '🔌 ' + (p ? p.name : cfgProv) + ' · ' + cfgModel + '<br>🔑 ' + (key ? '●●●●' + key.slice(-4) : '<span style="color:#ef4444">未设置</span>');
+}
+function saveConfig() {
+  var key = document.getElementById('cfg-api-key').value.trim();
+  var model = document.getElementById('cfg-model-select').value || cfgModel;
+  var st = document.getElementById('cfg-status');
+  if (!key) { st.textContent = '🔑 请填写 API Key'; st.className = 'cfg-status err'; return; }
+  if (key.length < 10) { st.textContent = '🔑 API Key 太短'; st.className = 'cfg-status err'; return; }
+  try {
+    var p = PROVIDERS.find(function(x) { return x.id === cfgProv; });
+    localStorage.setItem('xlr_cfg', JSON.stringify({prov: cfgProv, model: model, key: key, url: p ? p.url : ''}));
+    st.textContent = '✅ 已保存！'; st.className = 'cfg-status ok';
+    document.getElementById('empty-sub').textContent = '说话或打字，我在这里';
+    setTimeout(closeConfig, 800);
+  } catch(e) {
+    st.textContent = '❌ ' + e.message; st.className = 'cfg-status err';
+  }
+}
+
+// ====== 消息 ======
+function addMsg(type, text) {
+  var d = document.getElementById('msgs');
+  var eh = document.getElementById('empty-hint');
+  if (eh) eh.remove();
+  var el = document.createElement('div');
+  el.className = 'msg ' + type;
+  var now = new Date();
+  var t = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  if (type === 'ai') {
+    el.innerHTML = '<div class="mb">' + esc(text) + '</div><div class="mbtns"><button class="mbtn" onclick="replay(this,\'' + escAttr(text) + '\')">🔊</button></div><div class="mtime">' + t + '</div>';
+  } else {
+    el.innerHTML = '<div class="mb">' + esc(text) + '</div><div class="mtime">' + t + '</div>';
+  }
+  d.appendChild(el);
+  d.scrollTop = d.scrollHeight;
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+function replay(btn, text) {
+  if (!text) return;
+  if (utt) speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(text); u.lang='zh-CN'; u.rate=1.05; u.pitch=1.0;
+  btn.classList.add('playing');
+  u.onend = function() { btn.classList.remove('playing'); };
+  u.onerror = function() { btn.classList.remove('playing'); };
+  utt = u;
+  speechSynthesis.speak(u);
+}
+
+function saveHist() {
+  try { localStorage.setItem('xlr_hist', JSON.stringify(msgHistory.slice(-50))); } catch(e) {}
+}
+function loadHist() {
+  try {
+    var r = localStorage.getItem('xlr_hist');
+    if (r) {
+      var arr = JSON.parse(r);
+      if (arr && arr.length) {
+        msgHistory = arr;
+        var d = document.getElementById('msgs');
+        var eh = document.getElementById('empty-hint');
+        if (eh) eh.remove();
+        d.innerHTML = arr.map(function(m) {
+          return '<div class="msg ' + m.role + '"><div class="mb">' + esc(m.content) + '</div></div>';
+        }).join('');
+        d.scrollTop = d.scrollHeight;
+      }
+    }
+  } catch(e) {}
+}
+window.addEventListener('beforeunload', saveHist);
+
+// ====== 发送（走本地引擎，带28个DNA工具）======
+function sendText() {
+  if (isLoading) return;
+  var inp = document.getElementById('text-input');
+  var text = inp.value.trim();
+  if (!text) return;
+  var cfg = hasCfg();
+  if (!cfg) {
+    addMsg('user', text);
+    addMsg('ai', '还没配置大模型～\n\n点右上角 ⚙ 去设置');
+    inp.value = ''; inp.style.height = 'auto';
+    return;
+  }
+  addMsg('user', text);
+  inp.value = ''; inp.style.height = 'auto';
+  msgHistory.push({role:'user', content:text});
+
+  // 显示加载
+  var loadEl = document.createElement('div');
+  loadEl.className = 'msg ai';
+  loadEl.innerHTML = '<div class="mb"><div class="typing-dots"><span></span><span></span><span></span></div></div>';
+  document.getElementById('msgs').appendChild(loadEl);
+  document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
+
+  isLoading = true;
+  document.getElementById('send-btn').disabled = true;
+
+  // 走本地引擎 /api/chat（带28个DNA工具）
+  var saved = JSON.parse(localStorage.getItem('xlr_cfg'));
+  fetch('/api/chat', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      message: text,
+      charIndex: CHARS.findIndex(function(c) { return c.id === curChar; }) || 0,
+      provider: saved.prov,
+      model: saved.model,
+      api_key: saved.key,
+    }),
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    loadEl.remove();
+    var reply = data.reply || '❌ 无响应';
+    addMsg('ai', reply);
+    msgHistory.push({role:'assistant', content: reply});
+    saveHist();
+  }).catch(function(err) {
+    loadEl.remove();
+    addMsg('ai', '❌ 网络不通：' + err.message);
+  }).finally(function() {
+    isLoading = false;
+    document.getElementById('send-btn').disabled = false;
+  });
+}
+
+// ====== 语音 ======
+function initSTT() {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return null;
+  var r = new SR();
+  r.lang = 'zh-CN'; r.continuous = true; r.interimResults = true;
+  r.onresult = function(e) {
+    var t = '';
+    for (var i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+    if (e.results[e.results.length-1].isFinal && t.trim()) {
+      document.getElementById('text-input').value = t.trim();
+      sendText();
+    }
+  };
+  r.onerror = function(e) { if (e.error!=='no-speech'&&e.error!=='aborted') stopSTT(); };
+  r.onend = function() { if (isListening) { try{r.start()}catch(ex){} } };
+  return r;
+}
+function startTalk(e) {
+  e.preventDefault();
+  if (!recognition) recognition = initSTT();
+  if (!recognition) return;
+  try { recognition.start(); } catch(ex) {}
+  isListening = true;
+  document.getElementById('mic-btn').classList.add('active');
+}
+function stopTalkWrap(e) {
+  e.preventDefault();
+  setTimeout(function() { if (isListening) stopSTT(); }, 400);
+}
+function stopSTT() {
+  if (recognition) { try { recognition.stop(); } catch(ex) {} }
+  isListening = false;
+  document.getElementById('mic-btn').classList.remove('active');
+}
+
+// 监听API Key输入
+document.addEventListener('input', function(e) {
+  if (e.target.id === 'cfg-api-key') {
+    var key = e.target.value.trim();
+    var summary = document.getElementById('cfg-summary');
+    if (summary) {
+      summary.innerHTML = summary.innerHTML.replace(/🔑.*/, '🔑 ' + (key ? '●●●●' + key.slice(-4) : '<span style="color:#ef4444">未设置</span>'));
+    }
+  }
+});
+</script>
+</body>
+</html>

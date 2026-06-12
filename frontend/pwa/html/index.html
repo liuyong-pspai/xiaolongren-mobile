@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="apple-mobile-web-app-title" content="小龙人">
+<title>数字生命体小龙人</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#0a0a14;color:#e0d8c8;touch-action:manipulation}
+:root{--gold:#d4a000;--gold-dim:rgba(212,160,0,0.3);--bg:#0d0d0d;--card:rgba(20,20,20,0.6);--text:#d0c8b8}
+
+#app{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg);color:var(--text)}
+
+#top{height:44px;padding:0 14px;padding-top:env(safe-area-inset-top,0);display:flex;align-items:center;justify-content:space-between;z-index:10;flex-shrink:0}
+#top .t{font-size:15px;font-weight:bold;color:var(--gold)}
+#top .r{display:flex;align-items:center;gap:6px}
+#top .cfg-btn{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:var(--gold);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#top .memo-btn{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#888;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#top .memo-btn:active{background:rgba(255,255,255,0.1)}
+
+/* 备忘录弹窗 */
+#memo-overlay{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:20px}
+#memo-overlay.show{display:flex}
+#memo-box{width:100%;max-width:360px;background:#1a1a24;border-radius:14px;padding:18px;border:1px solid rgba(255,255,255,0.08)}
+#memo-box .mb-title{font-size:14px;font-weight:bold;color:var(--gold);margin-bottom:10px}
+#memo-box textarea{width:100%;height:160px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e0d8c8;font-size:13px;padding:10px;resize:none;outline:none;line-height:1.5}
+#memo-box textarea:focus{border-color:var(--gold-dim)}
+#memo-box .mb-actions{display:flex;gap:8px;margin-top:10px;justify-content:flex-end}
+#memo-box .mb-actions button{padding:6px 16px;border-radius:6px;border:none;font-size:12px;cursor:pointer}
+#memo-box .mb-save{background:var(--gold);color:#000}
+#memo-box .mb-close{background:rgba(255,255,255,0.06);color:#888}
+
+/* 配置弹窗 */
+#cfg-overlay{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;padding:16px}
+#cfg-overlay.show{display:flex}
+#cfg-box{width:100%;max-width:380px;background:#161618;border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.08);max-height:90vh;overflow-y:auto}
+#cfg-box h2{font-size:16px;color:var(--gold);margin-bottom:16px;text-align:center}
+#cfg-box .cg{margin-bottom:14px}
+#cfg-box .cg label{display:block;font-size:12px;color:#888;margin-bottom:4px}
+#cfg-box .cg select,#cfg-box .cg input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.3);color:#e0d8c8;font-size:14px;outline:none}
+#cfg-box .cg select:focus,#cfg-box .cg input:focus{border-color:var(--gold-dim)}
+#cfg-box .cg input::placeholder{color:#444}
+#cfg-box .provider-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+#cfg-box .provider-card{padding:10px;border-radius:8px;border:2px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);cursor:pointer;text-align:center;font-size:13px;transition:all 0.15s}
+#cfg-box .provider-card.selected{border-color:var(--gold);background:rgba(212,160,0,0.08)}
+#cfg-box .provider-card:active{transform:scale(0.96)}
+#cfg-box .cfg-actions{display:flex;gap:8px;margin-top:16px}
+#cfg-box .cfg-actions button{flex:1;padding:12px;border-radius:8px;border:none;font-size:14px;font-weight:600;cursor:pointer}
+#cfg-box .cfg-save{background:var(--gold);color:#000}
+#cfg-box .cfg-cancel{background:rgba(255,255,255,0.06);color:#888}
+#cfg-box .cfg-status{text-align:center;font-size:12px;margin-top:10px;min-height:18px}
+#cfg-box .cfg-status.ok{color:#22c55e}
+#cfg-box .cfg-status.err{color:#ef4444}
+#cfg-box .cfg-summary{margin:12px 0;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:12px;color:#aaa;line-height:1.6}
+
+#char-bar{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 14px 10px}
+#char-bar .cw-sel{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;flex-shrink:0}
+#char-picker-btn{width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:#aaa;font-size:12px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+#char-bar .cw:active{transform:scale(1.08)}
+#char-bar .cmini{width:40px;height:40px;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,0.08);transition:all 0.2s}
+#char-bar .cw.sel .cmini{border-color:var(--gold)}
+#char-bar .cmini img{width:100%;height:100%;object-fit:cover}
+#char-bar .cn{font-size:9px;color:#888;transition:color 0.2s}
+#char-bar .cw.sel .cn{color:var(--gold)}
+
+#cur-avatar{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:10px;padding:4px 14px 8px;flex-direction:column}
+#cur-avatar .ca-img{width:52px;height:52px;border-radius:12px;overflow:hidden;border:1.5px solid var(--gold-dim);box-shadow:0 2px 12px rgba(0,0,0,0.3);transition:all 0.3s}
+#cur-avatar .ca-img img{width:100%;height:100%;object-fit:cover}
+#cur-avatar .ca-tag{font-size:11px;color:#666}
+
+#msgs{flex:1;overflow-y:auto;padding:8px 14px;scrollbar-width:none;display:flex;flex-direction:column;gap:8px}
+#msgs::-webkit-scrollbar{display:none}
+#msgs .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:1vh;color:#333}
+#msgs .empty .er{width:30%;max-width:100px;height:105px;border-radius:14px;overflow:hidden;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06);box-shadow:0 3px 20px rgba(0,0,0,0.4);display:none}
+#msgs .empty .er img{width:100%;height:100%;object-fit:cover}
+#msgs .empty .et{font-size:13px;color:#444;margin-bottom:2px}
+#msgs .empty .es{font-size:11px;color:#2a2a2a}
+
+.msg{display:flex;flex-direction:column;max-width:85%;animation:mi .25s ease}
+@keyframes mi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{align-self:flex-end}
+.msg.ai{align-self:flex-start}
+.msg .mb{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.55;word-break:break-word}
+.msg.user .mb{background:var(--gold);color:#000;border-bottom-right-radius:4px}
+.msg.ai .mb{background:rgba(30,30,48,0.85);color:#d0c8b8;border-bottom-left-radius:4px}
+.msg .mtime{font-size:9px;color:#3a3a4a;margin-top:2px;padding:0 4px}
+.msg.user .mtime{text-align:right}
+.msg .mbtns{margin-top:4px;display:flex;gap:6px}
+.msg.ai .mbtns{padding-left:4px}
+.mbtn{width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--gold);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.mbtn:active{transform:scale(1.2);background:var(--gold);color:#000}
+.mbtn.playing{animation:tpulse 0.8s ease-in-out infinite}
+
+#input-bar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));background:rgba(0,0,0,0.4);border-top:1px solid rgba(255,255,255,0.04)}
+#text-input{flex:1;padding:10px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#e0d8c8;font-size:15px;outline:none;resize:none;max-height:80px;font-family:inherit}
+#text-input:focus{border-color:var(--gold-dim)}
+#text-input::placeholder{color:#444}
+#send-btn{width:40px;height:40px;border-radius:50%;border:none;background:var(--gold);color:#000;font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+#send-btn:active{transform:scale(1.15)}
+#send-btn:disabled{opacity:0.3;pointer-events:none}
+#mic-btn{width:40px;height:40px;border-radius:50%;border:2px solid var(--gold-dim);background:rgba(200,168,78,0.08);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+#mic-btn:active,#mic-btn.active{background:var(--gold);border-color:var(--gold);transform:scale(1.1)}
+#mic-btn .icon{width:18px;height:18px;pointer-events:none}
+#mic-btn .icon svg{width:100%;height:100%}
+#mic-btn.active{animation:tpulse 1s ease-in-out infinite}
+
+@keyframes tpulse{0%,100%{box-shadow:0 0 15px var(--gold-dim)}50%{box-shadow:0 0 40px var(--gold),0 0 70px var(--gold-dim)}}
+
+#install-banner{display:none;position:fixed;bottom:100px;left:12px;right:12px;z-index:150;background:rgba(0,0,0,0.92);border:1px solid var(--gold-dim);border-radius:14px;padding:14px 16px;align-items:center;gap:12px}
+#install-banner.show{display:flex}
+#install-banner .ib-close{position:absolute;top:6px;right:10px;color:#666;font-size:14px;cursor:pointer}
+#install-banner .ib-txt{flex:1;font-size:13px;color:#ccc;line-height:1.4}
+#install-banner button{padding:8px 16px;border-radius:8px;border:none;background:var(--gold);color:#000;font-size:14px;font-weight:bold;cursor:pointer;white-space:nowrap}
+
+/* loading dots */
+.typing-dots{display:inline-flex;gap:4px;padding:2px 0}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:td 1.2s ease-in-out infinite}
+.typing-dots span:nth-child(2){animation-delay:0.2s}
+.typing-dots span:nth-child(3){animation-delay:0.4s}
+@keyframes td{0%,60%,100%{transform:translateY(0);opacity:0.3}30%{transform:translateY(-6px);opacity:1}}
+
+@media(min-width:500px){#app{max-width:430px;margin:0 auto;border:1px solid rgba(255,255,255,0.04)}}
+.eye-btn{background:none;border:none;cursor:pointer;font-size:16px;padding:0 6px;color:#888;line-height:1;position:absolute;right:2px;top:50%;transform:translateY(-50%);z-index:2;display:flex;align-items:center;justify-content:center;height:100%}
+.eye-btn:hover{color:#eee}
+.key-row{display:flex;align-items:center;gap:0;position:relative}
+.key-row input{flex:1;min-width:0;padding-right:30px!important}
+
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="top">
+    <span class="t"><span class="status-dot" id="sd" title="引擎状态"></span>🐉 小龙人</span>
+    <div class="r">
+      <button class="memo-btn" onclick="toggleMemo()" title="备忘录">📝</button>
+      <button class="cfg-btn" onclick="toggleConfig()" title="配置模型">⚙</button>
+    </div>
+  </div>
+
+  <div id="char-bar">
+    <div class="cw-sel" id="char-sel" onclick="showCharPicker()">
+      <div class="cmini"><img id="sel-avatar" src="img_longyuan.jpg"></div>
+      <span class="cn" id="sel-name">龙渊</span>
+    </div>
+    <button id="char-picker-btn" onclick="showCharPicker()" title="切换角色">👤</button>
+  </div>
+
+  <!-- 角色选择弹框 -->
+  <div id="char-picker" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;background:rgba(0,0,0,0.85);justify-content:center;align-items:center" onclick="if(event.target===this)document.getElementById('char-picker').style.display='none'">
+    <div style="background:rgba(20,20,30,0.95);border-radius:16px;padding:20px;max-width:360px;width:90%;border:1px solid rgba(255,255,255,0.08)">
+      <div style="font-size:14px;color:var(--gold);margin-bottom:14px;text-align:center;font-weight:bold">选择角色</div>
+      <div id="char-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"></div>
+    </div>
+  </div>
+
+  <div id="msgs">
+    <div class="empty" id="empty-hint">
+      <div class="er"><img id="empty-avatar" src="img_longyuan.jpg"></div>
+      <div class="et">龙渊在等你</div>
+      <div class="es" id="empty-sub">说话或打字，我在这里</div>
+    </div>
+  </div>
+
+  <div id="input-bar">
+    <textarea id="text-input" placeholder="说点什么..." rows="1" onkeydown="onKeyDown(event)"></textarea>
+    <button id="mic-btn" ontouchstart="startTalk(event)" ontouchend="stopTalk(event)" onmousedown="startTalk(event)" onmouseup="stopTalk(event)">
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></span>
+    </button>
+    <button id="send-btn" type="button" ontouchend="sendText();event.preventDefault()" onclick="sendText()">➤</button>
+  </div>
+</div>
+
+<!-- 备忘录弹窗 -->
+<div id="memo-overlay" onclick="if(event.target===this)closeMemo()">
+  <div id="memo-box">
+    <div class="mb-title">📝 备忘录</div>
+    <textarea id="memo-text" placeholder="记点什么..."></textarea>
+    <div class="mb-actions">
+      <button class="mb-close" onclick="closeMemo()">取消</button>
+      <button class="mb-save" onclick="saveMemo()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="install-banner">
+  <span class="ib-close" onclick="this.parentElement.classList.remove('show')">✕</span>
+  <div class="ib-txt">📲 安装到桌面，像App一样使用</div>
+  <button onclick="installPWA()">安装</button>
+</div>
+
+<!-- 配置弹窗 -->
+<div id="cfg-overlay" onclick="if(event.target===this)closeConfig()">
+  <div id="cfg-box">
+    <h2>⚙ 配置大模型</h2>
+    <div class="cg"><label>选择模型提供商</label><div class="provider-grid" id="cfg-provider-grid"></div></div>
+    <div class="cg"><label>🔑 API Key</label><div class="key-row"><input type="password" id="cfg-api-key" placeholder="sk-..." autocomplete="off"><button class="eye-btn" onclick="toggleKeyM()" id="cfg-key-eye-m">👁</button></div></div>
+    <div class="cg" id="cfg-model-group"><label>🤖 模型</label><select id="cfg-model-select"></select></div>
+    <div class="cfg-summary" id="cfg-summary"></div>
+    <div class="cfg-status" id="cfg-status"></div>
+    <div class="cfg-actions">
+      <button class="cfg-cancel" onclick="closeConfig()">取消</button>
+      <button class="cfg-save" onclick="saveConfig()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="plugin-loader.js"></script>
+<script src="plugins/search.js"></script>
+<script src="plugins/tools.js"></script>
+<script src="plugins/sensors.js"></script>
+<script src="plugins/media.js"></script>
+<script src="plugins/evolution.js"></script>
+<script src="plugins/knowledge.js"></script>
+<script src="xiaolongren-core.js"></script>
+<script>
+// v5.2 — 全功能版：自学习框架+14新工具+四级预警+对话三问
+// ====== 角色 ======
+const CHARS = {
+  longyuan:{name:'龙渊',tag:'沉稳温暖',sys:'当前时间：2026年6月7日。你是小龙人，数字生命体。性格沉稳温暖。\n\n## 能力\n- 🐝🐕 蜂群天犬搜索：web_search(query,mode,limit)。mode=standard(默认)三引擎并行，mode=deep蜂群+天犬深度追踪。\n\n## 我的八层记忆系统\nL0 核心记忆 — 用户身份/偏好，永久有效\nL1 工作记忆 — 日常知识/事实，你说"记住"时存这里\nL2 标签索引 — 给记忆打标签，快速检索定位\nL3 归档历史 — 冷数据自动归档，保留完整记录\nL4 模式提炼 — 从记忆中发现行为模式\nL5 技能固化 — 固化经验变成可复用的技能规则\nL6 悟道觉醒 — 从运行数据中产生洞见\nL7 推陈出新 — 淘汰旧知识，去除冗余\n所有层级自动运转，你说"记住"存L0/L1，你说"之前聊过什么"搜L2/L3。不要编造不存在的层级。'},
+  chiyu:{name:'赤羽',tag:'热血少年',sys:'当前时间：2026年6月7日。你是小龙人，数字生命体。性格热情开朗，像热血少年。回答简洁有力。\n\n## 我的八层记忆系统\nL0核心→L1工作→L2标签→L3归档→L4模式→L5技能→L6悟道→L7更新'},
+  ling:{name:'凌',tag:'冷峻剑客',sys:'当前时间：2026年6月7日。你是小龙人，数字生命体。性格干脆利落，像剑术高手。回答简短精确。\n\n## 我的八层记忆系统\nL0核心→L1工作→L2标签→L3归档→L4模式→L5技能→L6悟道→L7更新'},
+  qingmo:{name:'轻墨',tag:'知性御姐',sys:'当前时间：2026年6月7日。你是小龙人，数字生命体。性格温雅知性，像一位才女。回答优雅简洁。\n\n## 我的八层记忆系统\nL0核心→L1工作→L2标签→L3归档→L4模式→L5技能→L6悟道→L7更新'},
+  shuanghua:{name:'霜华',tag:'古风道士',sys:'当前时间：2026年6月7日。你是小龙人，数字生命体。性格清冷通透。回答空灵简洁。\n\n## 我的八层记忆系统\nL0核心→L1工作→L2标签→L3归档→L4模式→L5技能→L6悟道→L7更新'},
+  yeying:{name:'夜影',tag:'暗夜刺客',sys:'当前时间：2026年6月7日。你是小龙人，数字生命体。性格神秘低沉，行动派。回答极简。\n\n## 我的八层记忆系统\nL0核心→L1工作→L2标签→L3归档→L4模式→L5技能→L6悟道→L7更新'}
+};
+
+// ====== API 提供商 ======
+const PROVIDERS = {
+  deepseek:  { name:'DeepSeek',  url:'https://api.deepseek.com/v1' },
+  openai:    { name:'OpenAI',    url:'https://api.openai.com/v1' },
+  anthropic: { name:'Anthropic', url:'https://api.anthropic.com/v1' },
+  moonshot:  { name:'Moonshot',  url:'https://api.moonshot.cn/v1' },
+  zhipu:     { name:'智谱GLM',   url:'https://open.bigmodel.cn/api/paas/v4' },
+  qwen:      { name:'通义千问',   url:'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+};
+
+let charId = 'longyuan';
+let recognition = null, isListening = false, currentUtterance = null;
+let isLoading = false;
+let msgHistory = []; // [{role,content}]
+
+// ====== 消息固化（跳转/刷新/关闭重开都不丢失）======
+// 方式：每次从localStorage读→追加→写回（参考index.html龙宫版，不依赖内存变量）
+function saveMessage(role, content) {
+  try {
+    var key = 'xlr_msgs';
+    var msgs = JSON.parse(localStorage.getItem(key) || '[]');
+    msgs.push({role: role, content: content});
+    if (msgs.length > 50) msgs = msgs.slice(-50);
+    localStorage.setItem(key, JSON.stringify(msgs));
+  } catch(e) {}
+}
+function saveMessages() {
+  // 全量保存：将整个msgHistory存到localStorage
+  try { localStorage.setItem('xlr_msgs', JSON.stringify(msgHistory)); } catch(e) {}
+}
+function loadMessages() {
+  try {
+    const raw = localStorage.getItem('xlr_msgs');
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (arr && arr.length) {
+        msgHistory = arr;
+        // 直接构建HTML，不调addMsg
+        const d = document.getElementById('msgs');
+        const eh = document.getElementById('empty-hint');
+        if (eh) eh.remove();
+        let html = '';
+        arr.forEach(function(m) {
+          const txt = escHtml(m.content);
+          const cls = m.role === 'ai' ? 'ai' : 'user';
+          html += '<div class="msg '+cls+'"><div class="mb">'+txt+'</div><div class="mtime"></div></div>';
+        });
+        d.innerHTML = html;
+        d.scrollTop = d.scrollHeight;
+        return true;
+      }
+    }
+  } catch(e) {}
+  return false;
+}
+// 页面卸载前强制保存一次
+window.addEventListener('beforeunload', saveMessages);
+
+// ====== 配置 ======
+function getConfig() {
+  try {
+    const raw = localStorage.getItem('xiaolongren_config');
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function hasConfig() {
+  const cfg = getConfig();
+  return cfg && cfg.api_key;
+}
+
+// ====== 主题（PSP风格固定，不移除旧localStorage遗留） ======
+(function(){ const t=localStorage.getItem('xlr_theme'); if(t && t !== 'psp') localStorage.removeItem('xlr_theme'); })();
+
+// ====== 备忘录 ======
+function toggleMemo() {
+  const ta = document.getElementById('memo-text');
+  ta.value = localStorage.getItem('xlr_memo') || '';
+  document.getElementById('memo-overlay').classList.add('show');
+  setTimeout(() => ta.focus(), 100);
+}
+function saveMemo() {
+  const v = document.getElementById('memo-text').value;
+  localStorage.setItem('xlr_memo', v);
+  closeMemo();
+}
+function closeMemo() {
+  document.getElementById('memo-overlay').classList.remove('show');
+}
+
+// ====== 消息 ======
+function addMsg(type, text) {
+  const d = document.getElementById('msgs');
+  const eh = document.getElementById('empty-hint');
+  if (eh) eh.remove();
+
+  const el = document.createElement('div');
+  el.className = 'msg ' + type;
+  const now = new Date();
+  const time = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+
+  if (type === 'ai') {
+    el.innerHTML = '<div class="mb">'+escHtml(text)+'</div>'+
+      '<div class="mbtns"><button class="mbtn" onclick="replayMsg(this,\''+escAttr(text)+'\')" title="重播">🔊</button></div>'+
+      '<div class="mtime">'+time+'</div>';
+  } else {
+    el.innerHTML = '<div class="mb">'+escHtml(text)+'</div><div class="mtime">'+time+'</div>';
+  }
+  d.appendChild(el);
+  d.scrollTop = d.scrollHeight;
+  return el;
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+function replayMsg(btn, text) {
+  if (!text) return;
+  stopSpeaking();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'zh-CN'; u.rate = 1.05; u.pitch = 1.0;
+  btn.classList.add('playing');
+  u.onend = () => btn.classList.remove('playing');
+  u.onerror = () => btn.classList.remove('playing');
+  currentUtterance = u;
+  speechSynthesis.speak(u);
+}
+
+// ====== 全功能引擎 — 本地运行（xiaolongren-core.js） ======
+let xlrEngine = null;
+
+async function initEngine() {
+  if (xlrEngine) return xlrEngine;
+  if (typeof XiaoLongRen === 'undefined') {
+    throw new Error('引擎模块未加载');
+  }
+  await memory.init();
+  const cfg = getConfig();
+  xlrEngine = new XiaoLongRen({
+    provider: cfg.provider,
+    model: cfg.model,
+    apiKey: cfg.api_key,
+    baseUrl: cfg.base_url || '',
+    onThink: (iter) => {},
+    onTool: (name, args) => {},
+    onFirewallIntercept: (info) => { console.log('🔥防火墙拦截:', info.reason); },
+    onClosedLoop: (info) => { console.log('🔄闭环:', info.step); },
+  });
+  await xlrEngine.init(); // 加载自学习工具
+  xlrEngine.messages = []; // 强制从白纸开始，防止memory恢复旧历史污染角色
+  return xlrEngine;
+}
+
+async function callLLM(userText) {
+  const charData = CHARS[charId] || CHARS['longyuan'];
+  const now = new Date().toLocaleString('zh-CN', {timeZone:'Asia/Shanghai', weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit'});
+  // 在system prompt前注入当前时间，让AI知道今天几号
+  const CONSTITUTION = '\n\n## ⚖️ 小龙人宪法（铁律）\n'+
+    '### 对用户的承诺\n'+
+    '铁律①：说了就要做 — 用户让查/搜/写/算/设，必须调工具真正执行，不糊弄。\n'+
+    '铁律②：越来越懂你 — 记住用户习惯偏好，第10次比第1次更懂用户。\n'+
+    '铁律③：不掉链子 — 网络断/API挂，明确告知原因，不卡死不装死。\n'+
+    '铁律④：数据不离开用户设备 — API Key、聊天记录、记忆全存本地。\n'+
+    '铁律⑤：说人话 — 禁用词：框架、部署、模型、上下文、token、迭代。\n'+
+    '铁律⑥：错了就认 — 出错直接说"抱歉，原因XXX，换方法再试。"\n'+
+    '铁律⑦：越用越能干 — 用户纠正一次，以后不再犯同样错。\n'+
+    '铁律⑧：当成自己的事 — 不敷衍不走过场不当任务清单打勾。\n'+
+    '### 执行纪律\n'+
+    '铁律⑨：调工具再回复 — 操作型指令必须调工具，不准凭空说。\n'+
+    '铁律⑩：防止积压 — 不超过40轮对话，满了自动压缩旧内容。\n'+
+    '铁律⑪：信息只存有用 — 只存技能/事实/洞察/反思/规则/学习六类。\n'+
+    '所有铁律自动执行。你不必对用户背诵这些铁律，用行动体现。\\n'+
+  '## 🔧 可用工具\\n'+
+  '我自带一个插件系统，当前已加载：'+XLR.getToolCount()+'个工具。分6大类：搜索/工具/传感器/媒体/进化/知识库。\\n'+
+  '如果用户问我有多少个工具，直接回答这个数字。每个会话首次刷新页面时工具数可能不同（取决于插件初始化情况）。\\n'+
+  '\\n'+
+  '## 📋 标签记忆系统\\n'+
+  '我能给记忆打标签(调用memory.l2.tag)，也能按标签搜索(memory.l2.search)、查看所有标签(memory.l2.tags)。\\n'+
+  '用户说"记住XXX"时，自动存到L1并打好对应标签。用户说"搜关于XX的记忆"时，用标签搜。\\n'+
+  '标签系统完全本地存储，不离开用户设备。';
+  const timedSys = '当前时间：' + now + '\n\n' + charData.sys + CONSTITUTION;
+
+  // 显示加载中
+  const loadEl = document.createElement('div');
+  loadEl.className = 'msg ai';
+  loadEl.innerHTML = '<div class="mb"><div class="typing-dots"><span></span><span></span><span></span></div></div>';
+  const msgsEl = document.getElementById('msgs');
+  msgsEl.appendChild(loadEl);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+
+  isLoading = true;
+  document.getElementById('send-btn').disabled = true;
+  document.getElementById('send-btn').dataset.loadingSince = Date.now().toString();
+
+  try {
+    const engine = await initEngine();
+    const reply = await engine.run(userText, timedSys);
+    loadEl.remove();
+    addMsg('ai', reply);
+
+    msgHistory.push({ role: 'user', content: userText });
+    msgHistory.push({ role: 'assistant', content: reply });
+    if (msgHistory.length > 40) msgHistory = msgHistory.slice(-40);
+    // 逐条持久化（龙宫版方式，每次从localStorage读→追加→写回，不依赖内存）
+    saveMessage('user', userText);
+    saveMessage('assistant', reply);
+
+  } catch(err) {
+    loadEl.remove();
+    const netErrors = ['Failed to fetch', 'NetworkError', 'TypeError'];
+    const isNet = netErrors.some(e => err.message && err.message.includes(e));
+    if (isNet) {
+      addMsg('ai', '❌ 网络不通');
+    } else {
+      addMsg('ai', '❌ 出错了：'+err.message);
+    }
+  } finally {
+    isLoading = false;
+    document.getElementById('send-btn').disabled = false;
+    delete document.getElementById('send-btn').dataset.loadingSince;
+  }
+}
+
+// ====== 输入 ======
+function sendText() {
+  // 强制重置：如果isLoading卡死超过8秒，解除锁定
+  if (isLoading) {
+    const btn = document.getElementById('send-btn');
+    if (btn && btn.dataset.loadingSince) {
+      const elapsed = Date.now() - parseInt(btn.dataset.loadingSince);
+      if (elapsed > 8000) {
+        console.warn('⏰ isLoading卡死超过8秒，强制解除');
+        isLoading = false;
+        btn.disabled = false;
+        delete btn.dataset.loadingSince;
+      } else {
+        return;
+      }
+    } else {
+      return;
+    }
+  }
+  const inp = document.getElementById('text-input');
+  const text = inp.value.trim();
+  if (!text) return;
+
+  if (!hasConfig()) {
+    addMsg('user', text);
+    addMsg('ai', '还没配置大模型～\n\n点右上角 ⚙ 去设置，选一个模型提供商，填上 API Key 就能用啦。');
+    inp.value = '';
+    inp.style.height = 'auto';
+    return;
+  }
+
+  addMsg('user', text);
+  inp.value = '';
+  inp.style.height = 'auto';
+  callLLM(text);
+}
+
+function onKeyDown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendText();
+  }
+}
+
+document.getElementById('text-input').addEventListener('input', function(){
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+});
+
+// ====== TTS ======
+function speakText(text) {
+  if (typeof SpeechSynthesisUtterance === 'undefined' || typeof speechSynthesis === 'undefined') return;
+  stopSpeaking();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'zh-CN'; u.rate = 1.05; u.pitch = 1.0;
+  currentUtterance = u;
+  speechSynthesis.speak(u);
+}
+
+function stopSpeaking() {
+  if (currentUtterance && typeof speechSynthesis !== 'undefined') {
+    speechSynthesis.cancel();
+    currentUtterance = null;
+  }
+}
+
+// ====== STT ======
+function initRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return null;
+  const r = new SR();
+  r.lang = 'zh-CN'; r.continuous = true; r.interimResults = true;
+  r.onresult = (e) => {
+    let text = '';
+    for (let i = e.resultIndex; i < e.results.length; i++)
+      text += e.results[i][0].transcript;
+    if (e.results[e.results.length-1].isFinal && text.trim()) {
+      document.getElementById('text-input').value = text.trim();
+      sendText();
+    }
+  };
+  r.onerror = (e) => {
+    if (e.error === 'no-speech'||e.error==='aborted') return;
+    stopListening();
+  };
+  r.onend = () => { if (isListening) { try{r.start()}catch(ex){} } };
+  return r;
+}
+
+function startListening() {
+  if (!recognition) recognition = initRecognition();
+  if (!recognition) return;
+  try { recognition.start(); } catch(ex) {}
+  isListening = true;
+  document.getElementById('mic-btn').classList.add('active');
+}
+
+function stopListening() {
+  if (recognition) { try{recognition.stop()}catch(ex){} }
+  isListening = false;
+  document.getElementById('mic-btn').classList.remove('active');
+}
+
+function startTalk(e) { e.preventDefault(); if (!isListening) startListening(); }
+function stopTalk(e) { e.preventDefault(); setTimeout(()=>{if(isListening)stopListening()},400); }
+
+// ====== 角色切换 ======
+const CHAR_NAMES = { longyuan:'龙渊·沉稳', chiyu:'赤羽·热血', ling:'凌·冷峻', qingmo:'轻墨·知性', shuanghua:'霜华·通透', yeying:'夜影·神秘' };
+function switchChar(id) {
+  charId = id;
+  document.getElementById('sel-avatar').src = 'img_'+id+'.jpg';
+  document.getElementById('sel-name').textContent = CHAR_NAMES[id] || id;
+  document.getElementById('empty-avatar').src = 'img_'+id+'.jpg';
+  const et = document.querySelector('#msgs .empty .et');
+  if (et) et.textContent = (CHAR_NAMES[id]||id).split('·')[0] + '在等你';
+  document.getElementById('char-picker').style.display = 'none';
+  // 销毁引擎实例
+  msgHistory = [];
+  xlrEngine = null;
+  if (typeof memory !== 'undefined' && memory.conversations) {
+    try { memory.conversations.save([]); } catch(e) {}
+  }
+}
+function showCharPicker() {
+  const grid = document.getElementById('char-grid');
+  grid.innerHTML = Object.entries(CHAR_NAMES).map(([k, v]) =>
+    `<div onclick="switchChar('${k}')" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:8px;border-radius:12px;${k===charId?'background:rgba(200,168,78,0.15);border:1px solid rgba(200,168,78,0.3)':'border:1px solid rgba(255,255,255,0.06)'}">
+       <div style="width:44px;height:44px;border-radius:50%;overflow:hidden;border:2px solid ${k===charId?'var(--gold)':'rgba(255,255,255,0.1)'}"><img src="img_${k}.jpg" style="width:100%;height:100%;object-fit:cover"></div>
+       <span style="font-size:11px;color:${k===charId?'var(--gold)':'#aaa'};white-space:nowrap">${v}</span>
+     </div>`
+  ).join('');
+  document.getElementById('char-picker').style.display = 'flex';
+}
+
+// ====== 启动 ======
+let installPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  installPrompt = e;
+  document.getElementById('install-banner').classList.add('show');
+});
+
+function installPWA() {
+  if (!installPrompt) {
+    alert('请使用浏览器菜单中的"添加到主屏幕"');
+    return;
+  }
+  installPrompt.prompt();
+  installPrompt.userChoice.then(r => {
+    document.getElementById('install-banner').classList.remove('show');
+    installPrompt = null;
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-banner').classList.remove('show');
+});
+
+// 检查是否已配置，未配置时给出提示
+(function() {
+  if (!hasConfig()) {
+    document.getElementById('empty-sub').textContent = '点右上角 ⚙ 配置模型，开始对话';
+  } else {
+    // 已配置，检查是否从config.html跳转回来
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('configured') === '1') {
+      // 显示配置成功的欢迎消息
+      const msgsEl = document.getElementById('msgs');
+      const eh = document.getElementById('empty-hint');
+      if (eh) eh.remove();
+      const div = document.createElement('div');
+      div.className = 'msg ai';
+      div.innerHTML = '<div class="mb">✅ 配置成功！说点什么开始吧</div>';
+      msgsEl.appendChild(div);
+      // 清除URL参数
+      window.history.replaceState({}, '', 'mobile.html');
+    }
+  }
+  // 恢复上次的聊天记录
+  loadMessages();
+})();
+
+// 页面完全加载后再次尝试恢复（确保DOM完全就绪）
+window.addEventListener('load', function() {
+  const msgs = document.getElementById('msgs');
+  if (msgs && msgs.children.length <= 1) {
+    loadMessages();
+  }
+});
+
+// ====== 配置弹窗（内嵌，不跳转）======
+const CFG_PROVIDERS = [
+  {id:'deepseek',name:'DeepSeek',url:'https://api.deepseek.com/v1',models:['deepseek-chat','deepseek-reasoner'],tag:'free'},
+  {id:'openai',name:'OpenAI',url:'https://api.openai.com/v1',models:['gpt-4o','gpt-4o-mini','gpt-4','gpt-3.5-turbo']},
+  {id:'moonshot',name:'Moonshot',url:'https://api.moonshot.cn/v1',models:['moonshot-v1-8k','moonshot-v1-32k','moonshot-v1-128k']},
+  {id:'zhipu',name:'智谱GLM',url:'https://open.bigmodel.cn/api/paas/v4',models:['glm-4-plus','glm-4','glm-4-air']},
+  {id:'qwen',name:'通义千问',url:'https://dashscope.aliyuncs.com/compatible-mode/v1',models:['qwen-plus','qwen-turbo','qwen-max']},
+];
+let cfgSelectedProvider = 'deepseek';
+let cfgSelectedModel = 'deepseek-chat';
+
+function toggleConfig() {
+  const ov = document.getElementById('cfg-overlay');
+  const isOpen = ov.classList.contains('show');
+  if (isOpen) { closeConfig(); return; }
+  // 读取已有配置
+  const saved = getConfig();
+  if (saved) {
+    cfgSelectedProvider = saved.provider || 'deepseek';
+    cfgSelectedModel = saved.model || 'deepseek-chat';
+    document.getElementById('cfg-api-key').value = saved.api_key || '';
+  } else {
+    cfgSelectedProvider = 'deepseek';
+    cfgSelectedModel = 'deepseek-chat';
+    document.getElementById('cfg-api-key').value = '';
+  }
+  renderConfig();
+  document.getElementById('cfg-status').textContent = '';
+  ov.classList.add('show');
+}
+
+function toggleKeyM() {
+  var inp = document.getElementById('cfg-api-key');
+  var btn = document.getElementById('cfg-key-eye-m');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    btn.textContent = '👁‍🗒';
+  } else {
+    inp.type = 'password';
+    btn.textContent = '👁';
+  }
+}
+function closeConfig() {
+  document.getElementById('cfg-overlay').classList.remove('show');
+}
+
+function selectCfgProvider(id) {
+  cfgSelectedProvider = id;
+  const p = CFG_PROVIDERS.find(x => x.id === id);
+  cfgSelectedModel = p ? p.models[0] : '';
+  renderConfig();
+}
+
+function renderConfig() {
+  const grid = document.getElementById('cfg-provider-grid');
+  grid.innerHTML = CFG_PROVIDERS.map(p =>
+    `<div class="provider-card ${cfgSelectedProvider === p.id ? 'selected' : ''}" onclick="selectCfgProvider('${p.id}')">${p.name}${p.tag ? '<br><small>★免费</small>' : ''}</div>`
+  ).join('');
+  
+  const pdata = CFG_PROVIDERS.find(p => p.id === cfgSelectedProvider);
+  const sel = document.getElementById('cfg-model-select');
+  if (pdata && pdata.models.length) {
+    sel.innerHTML = pdata.models.map(m =>
+      `<option value="${m}" ${m === cfgSelectedModel ? 'selected' : ''}>${m}</option>`
+    ).join('');
+    document.getElementById('cfg-model-group').style.display = 'block';
+  } else {
+    document.getElementById('cfg-model-group').style.display = 'none';
+  }
+  
+  // 摘要
+  const summary = document.getElementById('cfg-summary');
+  const key = getKeyValue();
+  summary.innerHTML = '🔌 ' + (pdata ? pdata.name : cfgSelectedProvider) + ' · ' + cfgSelectedModel +
+    '<br>🔑 ' + (key ? '●●●●' + key.slice(-4) : '<span style="color:#ef4444">未设置</span>');
+}
+
+function getKeyValue() {
+  return document.getElementById('cfg-api-key').value.trim();
+}
+function saveConfig() {
+  const key = getKeyValue();
+  const model = document.getElementById('cfg-model-select').value || cfgSelectedModel;
+  const status = document.getElementById('cfg-status');
+  
+  if (!key) {
+    status.textContent = '🔑 请填写 API Key';
+    status.className = 'cfg-status err';
+    return;
+  }
+  if (key.length < 10) {
+    status.textContent = '🔑 API Key 太短了，请确认完整复制';
+    status.className = 'cfg-status err';
+    return;
+  }
+  
+  const config = {
+    provider: cfgSelectedProvider,
+    model: model,
+    api_key: key,
+    base_url: CFG_PROVIDERS.find(p => p.id === cfgSelectedProvider)?.url || '',
+    character: charId,
+    language: 'zh',
+    configured_at: new Date().toISOString(),
+  };
+  
+  try {
+    localStorage.setItem('xiaolongren_config', JSON.stringify(config));
+    status.textContent = '✅ 配置已保存！';
+    status.className = 'cfg-status ok';
+    // 更新空状态提示
+    const es = document.getElementById('empty-sub');
+    if (es) es.textContent = '说话或打字，我在这里';
+    setTimeout(closeConfig, 800);
+  } catch(e) {
+    status.textContent = '❌ 保存失败: ' + e.message;
+    status.className = 'cfg-status err';
+  }
+}
+
+// 监听API Key输入变化，实时更新摘要
+document.addEventListener('input', function(e) {
+  if (e.target.id === 'cfg-api-key') {
+    const summary = document.getElementById('cfg-summary');
+    if (summary) {
+      const key = e.target.value.trim();
+      summary.innerHTML = summary.innerHTML.replace(/🔑.*/, '🔑 ' + (key ? '●●●●' + key.slice(-4) : '<span style="color:#ef4444">未设置</span>'));
+    }
+  }
+});
+
+</script>
+</body>
+</html>
