@@ -25,43 +25,62 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Check environment
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:-NOT_SET}"
+          java -version 2>&1 | head -1
+          echo "SDK dirs:"
+          find ${ANDROID_HOME:-/usr/local/lib/android} -maxdepth 2 -name "platforms" -o -name "build-tools" 2>/dev/null | head -10
+
       - name: Accept SDK licenses
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
-          yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          yes | ${ANDROID_HOME}/tools/bin/sdkmanager --licenses > /dev/null 2>&1 || true
 
       - name: Install required SDK components
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" || true
-          $ANDROID_HOME/tools/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" || true
+          SDK_MGR="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          if [ -f "$SDK_MGR" ]; then
+            $SDK_MGR "platforms;android-34" "build-tools;34.0.0" 2>&1
+          else
+            echo "No cmdline-tools, trying tools/bin/sdkmanager"
+            ${ANDROID_HOME}/tools/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" 2>&1 || true
+          fi
 
       - name: Generate gradle wrapper
         run: |
           cd android
-          which gradle && gradle wrapper --gradle-version=8.2 || true
-          ls -la gradle/wrapper/ || true
+          # 用gradle系统命令生成wrapper
+          gradle wrapper --gradle-version=8.2 2>&1
+          echo "=== After wrapper generation ==="
+          ls -la gradle/wrapper/
+          ls -la gradlew
 
-      - name: Build APK
+      - name: Build APK (Debug)
         run: |
           cd android
           chmod +x gradlew
-          echo "=== Building APK ==="
-          export ANDROID_HOME=$ANDROID_HOME
-          ./gradlew assembleRelease 2>&1 | tee gradle_output.txt
-          echo "=== Build Exit Code: $? ==="
+          export ANDROID_HOME=${ANDROID_HOME}
+          echo "=== Starting Debug Build ==="
+          ./gradlew assembleDebug 2>&1
+          BUILD_EXIT=$?
+          echo "=== Build Exit Code: $BUILD_EXIT ==="
+          exit $BUILD_EXIT
 
-      - name: Check APK output
+      - name: List APK files
         run: |
-          echo "=== Searching for APK ==="
+          echo "=== All APKs in project ==="
           find . -name "*.apk" 2>/dev/null
-          echo "=== app/build/outputs ==="
-          find android/app/build/outputs -type f 2>/dev/null || echo "No outputs directory"
+          echo "=== Build outputs ==="
+          find android -path "*/build/outputs/*" -type f 2>/dev/null
+          echo "=== Full tree of app/build ==="
+          find android/app/build -type f 2>/dev/null | head -30
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: xiaolongren-apk
           path: |
-            android/app/build/outputs/apk/release/*.apk
             android/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: 'warn'
+            android/app/build/outputs/apk/debug/**/*.apk
+          if-no-files-found: 'error'
