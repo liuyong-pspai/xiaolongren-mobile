@@ -29,58 +29,81 @@ jobs:
         run: |
           echo "ANDROID_HOME=${ANDROID_HOME:-NOT_SET}"
           java -version 2>&1 | head -1
-          echo "SDK dirs:"
-          find ${ANDROID_HOME:-/usr/local/lib/android} -maxdepth 2 -name "platforms" -o -name "build-tools" 2>/dev/null | head -10
+          echo "SDK platforms:"
+          ls ${ANDROID_HOME}/platforms/ 2>/dev/null || echo "No platforms dir"
+          echo "SDK build-tools:"
+          ls ${ANDROID_HOME}/build-tools/ 2>/dev/null || echo "No build-tools dir"
 
       - name: Accept SDK licenses
         run: |
           yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
           yes | ${ANDROID_HOME}/tools/bin/sdkmanager --licenses > /dev/null 2>&1 || true
 
-      - name: Install required SDK components
+      - name: Ensure SDK components
         run: |
           SDK_MGR="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           if [ -f "$SDK_MGR" ]; then
-            $SDK_MGR "platforms;android-34" "build-tools;34.0.0" 2>&1
+            $SDK_MGR --list 2>&1 | grep "android-34" | head -3 || echo "android-34 not available via cmdline-tools"
+            $SDK_MGR "platforms;android-34" 2>&1 || true
           else
-            echo "No cmdline-tools, trying tools/bin/sdkmanager"
-            ${ANDROID_HOME}/tools/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" 2>&1 || true
+            echo "No cmdline-tools sdkmanager found"
           fi
 
       - name: Generate gradle wrapper
         run: |
           cd android
-          # 用gradle系统命令生成wrapper
           gradle wrapper --gradle-version=8.2 2>&1
-          echo "=== After wrapper generation ==="
+          echo "=== Wrapper files ==="
           ls -la gradle/wrapper/
           ls -la gradlew
+          echo "=== gradlew content (first 5 lines) ==="
+          head -5 gradlew
 
-      - name: Build APK (Debug)
+      - name: Build APK
         run: |
           cd android
           chmod +x gradlew
           export ANDROID_HOME=${ANDROID_HOME}
-          echo "=== Starting Debug Build ==="
-          ./gradlew assembleDebug 2>&1
+          echo "=== Starting build ==="
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "JAVA_HOME=$JAVA_HOME"
+          ./gradlew assembleDebug --info 2>&1 || ./gradlew assembleDebug 2>&1
           BUILD_EXIT=$?
           echo "=== Build Exit Code: $BUILD_EXIT ==="
-          exit $BUILD_EXIT
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "BUILD_FAILED=true" >> $GITHUB_ENV
+            exit $BUILD_EXIT
+          fi
+          echo "BUILD_FAILED=false" >> $GITHUB_ENV
 
-      - name: List APK files
+      - name: Locate APKs (step summary)
+        if: always()
         run: |
-          echo "=== All APKs in project ==="
+          echo "## Build Output" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### APK files found:" >> $GITHUB_STEP_SUMMARY
+          find . -name "*.apk" 2>/dev/null >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### All build output files:" >> $GITHUB_STEP_SUMMARY
+          find android -path "*/build/outputs/*" -type f 2>/dev/null >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### app/build directory (top 50):" >> $GITHUB_STEP_SUMMARY
+          find android/app/build -type f 2>/dev/null | head -50 >> $GITHUB_STEP_SUMMARY
+          
+          echo "=== Console output ==="
+          echo "APKs:"
           find . -name "*.apk" 2>/dev/null
-          echo "=== Build outputs ==="
-          find android -path "*/build/outputs/*" -type f 2>/dev/null
-          echo "=== Full tree of app/build ==="
+          echo "Build outputs:"
+          find android -path "*/build/outputs/*" -type f 2>/dev/null | head -20
+          echo "app/build tree:"
           find android/app/build -type f 2>/dev/null | head -30
 
       - name: Upload APK
+        if: env.BUILD_FAILED == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: xiaolongren-apk
           path: |
             android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/apk/debug/**/*.apk
-          if-no-files-found: 'error'
+            android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: 'warn'
