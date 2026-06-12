@@ -1,7 +1,30 @@
 #!/bin/sh
-# Gradle wrapper
+
+# Gradle wrapper script
 APP_NAME="Gradle"
 APP_BASE_NAME=$(basename "$0")
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CLASSPATH="$SCRIPT_DIR/gradle/wrapper/gradle-wrapper.jar"
-exec java -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+
+# Use the maximum available
+JAVA_HOME=${JAVA_HOME:-/usr/lib/jvm/java-8-openjdk-arm64}
+
+# Determine the Java command to use
+if [ -n "$JAVA_HOME" ] ; then
+    JAVACMD="$JAVA_HOME/bin/java"
+else
+    JAVACMD="java"
+fi
+
+# Determine the Gradle wrapper jar
+DIRNAME=$(dirname "$0")
+CLASSPATH=$DIRNAME/gradle/wrapper/gradle-wrapper.jar
+
+if [ ! -f "$CLASSPATH" ] ; then
+    echo "Gradle wrapper jar not found at $CLASSPATH"
+    echo "Please download gradle-wrapper.jar manually or use gradle --wrapper"
+    exit 1
+fi
+
+exec "$JAVACMD" \
+    -classpath "$CLASSPATH" \
+    org.gradle.wrapper.GradleWrapperMain \
+    "$@"

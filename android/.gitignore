@@ -9,6 +9,3 @@
 .cxx
 local.properties
 /app/build
-android/local.properties
-android/.gradle
-android/app/build
