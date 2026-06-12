@@ -23,21 +23,33 @@ jobs:
       - name: 创建local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-      - name: 用系统Gradle构建
+      - name: 检查环境
+        run: |
+          echo "JAVA_HOME: $JAVA_HOME"
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          ls $ANDROID_HOME/platforms/
+          ls $ANDROID_HOME/build-tools/
+
+      - name: 构建
         run: |
           cd android
-          # 直接下载一个gradle
+          echo "=== 下载Gradle ==="
           curl -sLO "https://services.gradle.org/distributions/gradle-8.0-bin.zip"
+          echo "下载完成: $(ls -lh gradle-8.0-bin.zip | awk '{print $5}')"
+          echo "=== 解压 ==="
           unzip -q gradle-8.0-bin.zip
+          echo "=== 构建 ==="
           export PATH="$PWD/gradle-8.0/bin:$PATH"
           gradle assembleDebug --no-daemon --stacktrace 2>&1
 
       - name: 查找APK
         run: |
-          find / -name "*.apk" 2>/dev/null | head -20
+          echo "=== 搜索APK文件 ==="
           find . -name "*.apk" 2>/dev/null | head -20
-          ls -la android/app/build/outputs/ 2>/dev/null || echo "无outputs"
+          find / -name "*.apk" -type f 2>/dev/null | head -10
+          echo "=== outputs目录 ==="
           find . -path "*/build/outputs/*" -type f 2>/dev/null | head -20
+          ls -laR android/app/build/ 2>/dev/null | head -30
 
       - name: 上传APK
         uses: actions/upload-artifact@v4
