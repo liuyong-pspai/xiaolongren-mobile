@@ -20,45 +20,27 @@ jobs:
       - name: 设置Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 检查环境
-        run: |
-          echo "JAVA_HOME: $JAVA_HOME"
-          echo "ANDROID_HOME: $ANDROID_HOME"
-          echo "SDK root:"
-          ls $ANDROID_HOME/ || echo "no ANDROID_HOME"
-          ls $ANDROID_SDK_ROOT/ || echo "no SDK_ROOT"
-          echo "platforms:"
-          ls $ANDROID_HOME/platforms/ 2>/dev/null || echo "no platforms dir"
-          echo "---"
-          # 直接安装platform
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" 2>&1 | tail -5 || echo "sdkmanager failed"
-
       - name: 创建local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-      - name: 构建APK
+      - name: 用系统Gradle构建
         run: |
           cd android
-          export ANDROID_HOME=$ANDROID_HOME
-          export ANDROID_SDK_ROOT=$ANDROID_HOME
-          # 直接运行gradle，捕获所有输出
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle_output.txt
-          echo "EXIT_CODE=$?" >> $GITHUB_OUTPUT
+          # 直接下载一个gradle
+          curl -sLO "https://services.gradle.org/distributions/gradle-8.0-bin.zip"
+          unzip -q gradle-8.0-bin.zip
+          export PATH="$PWD/gradle-8.0/bin:$PATH"
+          gradle assembleDebug --no-daemon --stacktrace 2>&1
 
-      - name: 显示Gradle输出
-        if: always()
+      - name: 查找APK
         run: |
-          if [ -f /tmp/gradle_output.txt ]; then
-            echo "=== Gradle最后100行 ==="
-            tail -100 /tmp/gradle_output.txt
-            echo "=== 错误摘要 ==="
-            grep -i "error\|FAILED\|Exception\|\$\$\$" /tmp/gradle_output.txt | tail -20 || echo "no errors found"
-          fi
+          find / -name "*.apk" 2>/dev/null | head -20
+          find . -name "*.apk" 2>/dev/null | head -20
+          ls -la android/app/build/outputs/ 2>/dev/null || echo "无outputs"
+          find . -path "*/build/outputs/*" -type f 2>/dev/null | head -20
 
       - name: 上传APK
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: xiaolongren-apk
           path: "**/*.apk"
-          if-no-files-found: 'ignore'

@@ -2,7 +2,6 @@
 # Gradle wrapper
 APP_NAME="Gradle"
 APP_BASE_NAME=$(basename "$0")
-DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
-CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
-JAVA_HOME=${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-amd64}
-exec "$JAVA_HOME/bin/java" $DEFAULT_JVM_OPTS -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CLASSPATH="$SCRIPT_DIR/gradle/wrapper/gradle-wrapper.jar"
+exec java -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
