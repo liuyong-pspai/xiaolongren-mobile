@@ -24,26 +24,39 @@ jobs:
         run: |
           cd android
           if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-            apt-get update -qq && apt-get install -y -qq gradle 2>/dev/null || true
-            which gradle 2>/dev/null && gradle wrapper --gradle-version 8.5 || true
+            # 下载gradle wrapper jar
+            mkdir -p gradle/wrapper
+            curl -sL "https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
+            chmod 644 gradle/wrapper/gradle-wrapper.jar
           fi
+          ls -la gradle/wrapper/
+          ls -la gradlew
+
+      - name: 检查项目结构
+        run: |
+          echo "=== 项目结构 ==="
+          find android -type f -name "*.java" -o -name "*.xml" -o -name "*.gradle" -o -name "*.properties" | sort
+          echo "=== settings.gradle ==="
+          cat android/settings.gradle
+          echo ""
+          echo "=== app/build.gradle ==="
+          cat android/app/build.gradle
 
       - name: 构建APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon 2>&1 | tail -100
 
       - name: 查找APK
         run: |
           echo "查找APK..."
-          find android -name "*.apk" 2>/dev/null
-          find . -name "*.apk" 2>/dev/null
+          find . -name "*.apk" -type f 2>/dev/null
+          echo "---"
+          find android -type d -name "outputs" 2>/dev/null
 
       - name: 上传APK
         uses: actions/upload-artifact@v4
         with:
           name: xiaolongren-apk
-          path: |
-            android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/*.apk
+          path: "**/*.apk"
