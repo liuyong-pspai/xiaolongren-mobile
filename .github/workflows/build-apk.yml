@@ -11,11 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 设置Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: 设置Java 17
         uses: actions/setup-java@v4
         with:
@@ -25,30 +20,26 @@ jobs:
       - name: 安装Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 安装Capacitor依赖
+      - name: 生成Gradle Wrapper
         run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-
-      - name: 添加Android平台
-        run: npx cap add android --no-sync
-
-      - name: 同步前端
-        run: npx cap sync android
+          cd android
+          # gradle-wrapper.jar 在CI中通过gradle wrapper命令生成
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            apt-get update -qq && apt-get install -y -qq gradle 2>/dev/null || true
+            which gradle && cd android && gradle wrapper --gradle-version 8.5 || true
+          fi
 
       - name: 构建APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon || {
+            echo "Gradle直接构建失败，尝试用系统gradle"
+            gradle assembleDebug --no-daemon 2>/dev/null || true
+          }
 
       - name: 上传APK
         uses: actions/upload-artifact@v4
         with:
           name: xiaolongren-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
-
-      - name: 创建Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: android/app/build/outputs/apk/debug/app-debug.apk

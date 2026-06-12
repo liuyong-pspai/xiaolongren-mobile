@@ -1,0 +1,26 @@
+plugins {
+    id 'com.android.application'
+}
+android {
+    namespace 'com.pspai.xiaolongren'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'com.pspai.xiaolongren'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+    }
+    buildTypes {
+        debug {
+            debuggable true
+        }
+    }
+    aaptOptions {
+        noCompress 'html', 'js', 'css', 'json', 'png', 'jpg'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
