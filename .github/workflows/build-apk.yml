@@ -24,39 +24,42 @@ jobs:
         run: |
           cd android
           if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-            # 下载gradle wrapper jar
             mkdir -p gradle/wrapper
             curl -sL "https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
-            chmod 644 gradle/wrapper/gradle-wrapper.jar
           fi
-          ls -la gradle/wrapper/
-          ls -la gradlew
 
       - name: 检查项目结构
         run: |
-          echo "=== 项目结构 ==="
-          find android -type f -name "*.java" -o -name "*.xml" -o -name "*.gradle" -o -name "*.properties" | sort
-          echo "=== settings.gradle ==="
+          echo "=== project结构 ==="
           cat android/settings.gradle
-          echo ""
           echo "=== app/build.gradle ==="
           cat android/app/build.gradle
+          echo "=== AndroidManifest ==="
+          head -20 android/app/src/main/AndroidManifest.xml
 
       - name: 构建APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon 2>&1 | tail -100
+          ./gradlew assembleDebug --no-daemon 2>&1
 
-      - name: 查找APK
+      - name: 查找并上传APK
         run: |
-          echo "查找APK..."
-          find . -name "*.apk" -type f 2>/dev/null
+          echo "搜索APK..."
+          find /home/runner -name "*.apk" -type f 2>/dev/null | head -20
           echo "---"
-          find android -type d -name "outputs" 2>/dev/null
+          find . -name "*.apk" -type f 2>/dev/null | head -20
+          echo "---"
+          # 尝试标准位置
+          ls -la android/app/build/outputs/ 2>/dev/null || echo "无outputs目录"
+          ls -la android/app/build/ 2>/dev/null || echo "无build目录"
+          # 复制到工作目录
+          mkdir -p /tmp/apk-output
+          find . -name "*.apk" -exec cp {} /tmp/apk-output/ \; 2>/dev/null
+          ls -la /tmp/apk-output/
 
       - name: 上传APK
         uses: actions/upload-artifact@v4
         with:
           name: xiaolongren-apk
-          path: "**/*.apk"
+          path: /tmp/apk-output/
