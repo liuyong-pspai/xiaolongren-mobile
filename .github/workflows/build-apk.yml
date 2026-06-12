@@ -1,6 +1,6 @@
 name: Build XiaoLongRen APK
 
-on:
+'on':
   push:
     branches: [ main ]
     paths:
@@ -38,7 +38,6 @@ jobs:
       - name: Generate gradle wrapper
         run: |
           cd android
-          # 如果没有gradle-wrapper.jar，用gradle命令生成
           which gradle && gradle wrapper --gradle-version=8.2 || true
           ls -la gradle/wrapper/ || true
 
