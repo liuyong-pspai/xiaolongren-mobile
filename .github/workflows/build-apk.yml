@@ -23,23 +23,27 @@ jobs:
       - name: 生成Gradle Wrapper
         run: |
           cd android
-          # gradle-wrapper.jar 在CI中通过gradle wrapper命令生成
           if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
             apt-get update -qq && apt-get install -y -qq gradle 2>/dev/null || true
-            which gradle && cd android && gradle wrapper --gradle-version 8.5 || true
+            which gradle 2>/dev/null && gradle wrapper --gradle-version 8.5 || true
           fi
 
       - name: 构建APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon || {
-            echo "Gradle直接构建失败，尝试用系统gradle"
-            gradle assembleDebug --no-daemon 2>/dev/null || true
-          }
+          ./gradlew assembleDebug --no-daemon
+
+      - name: 查找APK
+        run: |
+          echo "查找APK..."
+          find android -name "*.apk" 2>/dev/null
+          find . -name "*.apk" 2>/dev/null
 
       - name: 上传APK
         uses: actions/upload-artifact@v4
         with:
           name: xiaolongren-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/*.apk
