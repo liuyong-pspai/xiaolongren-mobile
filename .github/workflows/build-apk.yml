@@ -20,23 +20,27 @@ jobs:
       - name: 设置Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 安装SDK组件
+      - name: 安装platforms
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -5
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-34" "build-tools;34.0.0" 2>&1
 
       - name: 创建local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-      - name: 构建APK
+      - name: 打印Android SDK信息
         run: |
-          cd android
-          chmod +x gradlew
-          export ANDROID_HOME=$ANDROID_HOME
-          export ANDROID_SDK_ROOT=$ANDROID_HOME
-          ./gradlew assembleDebug --no-daemon 2>&1
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "JAVA_HOME=$JAVA_HOME_17_X64"
+          ls $ANDROID_HOME/
+          ls $ANDROID_HOME/platforms/
+          ls $ANDROID_HOME/build-tools/
 
-      - name: 上传APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: xiaolongren-apk
-          path: "**/*.apk"
+      - name: 用系统gradle构建
+        run: |
+          # 直接用apt-get安装gradle，不依赖wrapper
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gradle 2>&1 | tail -5
+          which gradle
+          gradle --version | head -5
+          cd android
+          gradle assembleDebug --no-daemon --stacktrace 2>&1
