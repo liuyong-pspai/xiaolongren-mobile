@@ -3,6 +3,8 @@ name: 构建小龙人APK
 on:
   push:
     branches: [ main ]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -22,14 +24,6 @@ jobs:
 
       - name: 配置SDK
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          ls -la $ANDROID_HOME/
-          echo "---"
-          ls -la $ANDROID_HOME/platforms/ 2>/dev/null || echo "无platforms"
-          ls -la $ANDROID_HOME/build-tools/ 2>/dev/null || echo "无build-tools"
-
-      - name: 创建local.properties
-        run: |
           echo "sdk.dir=$ANDROID_HOME" > android/local.properties
           cat android/local.properties
 
@@ -37,7 +31,6 @@ jobs:
         run: |
           cd android
           mkdir -p gradle/wrapper
-          # 下载gradle wrapper jar
           curl -sL "https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
           chmod 644 gradle/wrapper/gradle-wrapper.jar
           chmod +x gradlew
@@ -46,26 +39,28 @@ jobs:
         run: |
           cd android
           export ANDROID_HOME=$ANDROID_HOME
-          export JAVA_HOME=$JAVA_HOME_17_X64
-          echo "JAVA_HOME=$JAVA_HOME"
-          ./gradlew assembleDebug --no-daemon --info 2>&1 | tee /tmp/gradle.log | tail -80
+          ./gradlew assembleDebug --no-daemon 2>&1
 
-      - name: 显示Gradle日志
-        if: always()
+      - name: 查找并输出APK
         run: |
-          if [ -f /tmp/gradle.log ]; then
-            echo "=== 最后200行 ==="
-            tail -200 /tmp/gradle.log
-            echo "=== 错误行 ==="
-            grep -i "error\|FAILED\|Exception\|BUILD FAILED" /tmp/gradle.log | head -20
-          fi
-          echo "=== 查找APK ==="
-          find / -name "*.apk" -type f 2>/dev/null | head -10 || true
+          echo "=== 搜索APK ==="
+          find . -name "*.apk" 2>/dev/null
+          find / -name "*.apk" 2>/dev/null | head -5
+          echo "=== build目录 ==="
+          find . -path "*/build/outputs/*" -type d 2>/dev/null
+          echo "=== 列出build ==="
+          ls -laR android/app/build/ 2>/dev/null | head -50
 
-      - name: 上传APK
-        if: always()
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
           name: xiaolongren-apk
-          path: |
-            **/*.apk
+          path: .
+          if-no-files-found: warn
+
+      - name: 发布Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: "**/*.apk"
+          generate_release_notes: true
