@@ -13,54 +13,52 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 设置Java 17
+      - name: 设置JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
           java-version: '17'
+          distribution: 'temurin'
 
-      - name: 安装Android SDK
+      - name: 设置Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 配置SDK
+      - name: 接受licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+
+      - name: 创建local.properties
         run: |
           echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-          cat android/local.properties
+          echo "Created local.properties: sdk.dir=$ANDROID_HOME"
 
-      - name: 设置Gradle
+      - name: 下载Gradle Wrapper
         run: |
           cd android
           mkdir -p gradle/wrapper
-          curl -sL "https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
+          # Gradle wrapper jar from official source
+          curl -sLo gradle/wrapper/gradle-wrapper.jar "https://github.com/gradle/gradle/raw/v8.5.0/gradle/wrapper/gradle-wrapper.jar"
           chmod 644 gradle/wrapper/gradle-wrapper.jar
           chmod +x gradlew
+          echo "Gradle wrapper ready"
 
-      - name: 构建APK
+      - name: Grant execute permission
+        run: chmod +x android/gradlew
+
+      - name: Build APK
         run: |
           cd android
           export ANDROID_HOME=$ANDROID_HOME
-          ./gradlew assembleDebug --no-daemon 2>&1
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
 
-      - name: 查找并输出APK
-        run: |
-          echo "=== 搜索APK ==="
-          find . -name "*.apk" 2>/dev/null
-          find / -name "*.apk" 2>/dev/null | head -5
-          echo "=== build目录 ==="
-          find . -path "*/build/outputs/*" -type d 2>/dev/null
-          echo "=== 列出build ==="
-          ls -laR android/app/build/ 2>/dev/null | head -50
-
-      - name: 上传构建产物
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: xiaolongren-apk
-          path: .
-          if-no-files-found: warn
+          path: "**/*.apk"
+          if-no-files-found: 'error'
 
-      - name: 发布Release
+      - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: "**/*.apk"
-          generate_release_notes: true
