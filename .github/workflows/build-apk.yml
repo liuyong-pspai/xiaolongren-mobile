@@ -25,20 +25,15 @@ jobs:
       - name: 安装Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 安装依赖
+      - name: 安装Capacitor依赖
         run: |
-          npm install
-          npx cap init 小龙人 com.pspai.xiaolongren --web-dir frontend/pwa/html --no-sync
-          
-      - name: 添加Android平台
-        run: npx cap add android
+          npm install @capacitor/core @capacitor/cli @capacitor/android
 
-      - name: 替换图标
-        run: |
-          mkdir -p android/app/src/main/res
-          # 复制新图标
-          cp frontend/pwa/html/icon-192.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png 2>/dev/null || true
-          cp frontend/pwa/html/icon-512.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 2>/dev/null || true
+      - name: 添加Android平台
+        run: npx cap add android --no-sync
+
+      - name: 同步前端
+        run: npx cap sync android
 
       - name: 构建APK
         run: |
